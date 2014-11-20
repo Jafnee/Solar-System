@@ -39,15 +39,27 @@ var source = {
             }"
     },
 /* MY TEXTURE SOURCE */
-    texture: {
+    texture: {        
         sun: 'images/textures/sunmap.jpg',
+        mercury: 'images/textures/mercurymap.jpg',
+        venus: 'images/textures/venusmap.jpg',
         earth: 'images/textures/earthmap1k.jpg',
-        moon: 'images/textures/moon.gif'
+        moon: 'images/textures/moon.gif',
+        mars: 'images/textures/marsmap1k.jpg',
+        jupiter: 'images/textures/jupitermap.jpg',
+        saturn: 'images/textures/saturnmap.jpg',
+        uranus: 'images/textures/uranusmap.jpg',
+        neptune: 'images/textures/neptunemap.jpg',
+        space: 'images/textures/spacemap.jpg'
     }
 };
 
 var worldObjects = {
-    camera: null,
+    camera: {
+        x: 0.0,
+        y: -10.0,
+        z: -200.0
+    },
     
     lighting: {
         ambient: {
@@ -64,48 +76,137 @@ var worldObjects = {
             b: 0.8
         }
     },
-    
-    space: {
-        radius:40,
-        latitudeBands: 60,
-        longitudeBands: 60
-    },
-    
+/* Planets & Sun */    
     sun: {
-        angle: 180,
-        orbitAngle: 180,
+        angle: 0,
+        orbitAngle: 0,
         orbitSpeed: 0.05,
         orbitDistance: 0,
         rotateSpeed: 1,
         speed: 0.05,
-        radius: 5,
+        radius: 20,
+        latitudeBands: 60,
+        longitudeBands: 60
+    },
+    
+    mercury: {
+        angle: 0,
+        orbitAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 30,
+        rotateSpeed: 1,
+        speed: 0.05,
+        radius: 0.35,
+        latitudeBands: 60,
+        longitudeBands: 60
+    },
+    
+    venus: {
+        angle: 0,
+        orbitAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 35,
+        rotateSpeed: 1,
+        speed: 0.09,
+        radius:0.86,
         latitudeBands: 60,
         longitudeBands: 60
     },
     
     earth: {
-        angle: 180,
+        angle: 0,
         orbitAngle: 180,
         orbitSpeed: 0.05,
-        orbitDistance: 9,
+        orbitDistance: 15,
         rotateSpeed: 1,
-        speed: 0.05,
-        radius: 2,
+        speed: 0.07,
+        radius: 0.91,
         latitudeBands: 60,
         longitudeBands: 60
     },
     
     moon: {
-        angle: 270,
+        angle: 0,
         orbitAngle: 270,
         orbitSpeed: 0.05,
-        orbitDistance: 8,
+        orbitDistance: 16,
         rotateSpeed: 1,
-        speed: 0.05,
-        radius: 1,
+        speed: 0.09,
+        radius: 0.091,
         latitudeBands: 60,
         longitudeBands: 60
-    }
+    },
+    
+    mars: {
+        angle: 180,
+        orbitAngle: 180,
+        orbitSpeed: 15,
+        orbitDistance: 20,
+        rotateSpeed: 1,
+        speed: 0.03,
+        radius: 0.48,
+        latitudeBands: 60,
+        longitudeBands: 60
+    },
+    
+    jupiter: {
+        angle: 0,
+        orbitAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 40,
+        rotateSpeed: 1,
+        speed: 0.02,
+        radius: 10,
+        latitudeBands: 60,
+        longitudeBands: 60
+    },
+    
+    saturn: {
+        angle: 0,
+        orbitAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 70,
+        rotateSpeed: 1,
+        speed: 0.078,
+        radius: 8.6,
+        latitudeBands: 60,
+        longitudeBands: 60
+    },
+    
+    uranus: {
+        angle: 0,
+        orbitAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 90,
+        rotateSpeed: 1,
+        speed: 0.058,
+        radius: 3.6,
+        latitudeBands: 60,
+        longitudeBands: 60
+    },
+    
+    neptune: {
+        angle: 0,
+        orbitAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 99,
+        rotateSpeed: 1,
+        speed: 0.05,
+        radius: 3.5,
+        latitudeBands: 60,
+        longitudeBands: 60
+    },
+/* Background */
+    space: {
+        orbitAngle: 0,
+        orbitSpeed: 0,
+        orbitDistance: 0,
+        rotateSpeed: 0,
+        speed: 0,
+        radius: 400,
+        latitudeBands: 160,
+        longitudeBands: 160
+    },
 };
 
 var buffer = {};
@@ -303,6 +404,27 @@ var main = {
     
     
     initTextures: function() {
+        texture.sun = this.GL.createTexture();
+        texture.sun.image = new Image();
+        texture.sun.image.onload = function() {
+            util.handleLoadedTexture(texture.sun);
+        };
+        texture.sun.image.src = source.texture.sun;
+        
+        texture.mercury = this.GL.createTexture();
+        texture.mercury.image = new Image();
+        texture.mercury.image.onload = function() {
+            util.handleLoadedTexture(texture.mercury);
+        };
+        texture.mercury.image.src = source.texture.mercury;
+        
+        texture.venus = this.GL.createTexture();
+        texture.venus.image = new Image();
+        texture.venus.image.onload = function() {
+            util.handleLoadedTexture(texture.venus);
+        };
+        texture.venus.image.src = source.texture.venus;
+        
         texture.earth = this.GL.createTexture();
         texture.earth.image = new Image();
         texture.earth.image.onload = function() {
@@ -317,12 +439,47 @@ var main = {
         };
         texture.moon.image.src = source.texture.moon;
         
-        texture.sun = this.GL.createTexture();
-        texture.sun.image = new Image();
-        texture.sun.image.onload = function() {
-            util.handleLoadedTexture(texture.sun);
+        texture.mars = this.GL.createTexture();
+        texture.mars.image = new Image();
+        texture.mars.image.onload = function() {
+            util.handleLoadedTexture(texture.mars);
         };
-        texture.sun.image.src = source.texture.sun;
+        texture.mars.image.src = source.texture.mars;
+        
+        texture.jupiter = this.GL.createTexture();
+        texture.jupiter.image = new Image();
+        texture.jupiter.image.onload = function() {
+            util.handleLoadedTexture(texture.jupiter);
+        };
+        texture.jupiter.image.src = source.texture.jupiter;
+        
+        texture.saturn = this.GL.createTexture();
+        texture.saturn.image = new Image();
+        texture.saturn.image.onload = function() {
+            util.handleLoadedTexture(texture.saturn);
+        };
+        texture.saturn.image.src = source.texture.saturn;
+        
+        texture.uranus = this.GL.createTexture();
+        texture.uranus.image = new Image();
+        texture.uranus.image.onload = function() {
+            util.handleLoadedTexture(texture.uranus);
+        };
+        texture.uranus.image.src = source.texture.uranus;
+        
+        texture.neptune = this.GL.createTexture();
+        texture.neptune.image = new Image();
+        texture.neptune.image.onload = function() {
+            util.handleLoadedTexture(texture.neptune);
+        };
+        texture.neptune.image.src = source.texture.neptune;
+
+        texture.space = this.GL.createTexture();
+        texture.space.image = new Image();
+        texture.space.image.onload = function() {
+            util.handleLoadedTexture(texture.space);
+        };
+        texture.space.image.src = source.texture.space;
     },
     
     
@@ -338,16 +495,16 @@ var main = {
         if (lighting) {
             this.GL.uniform3f(
                 this.SHADER_PROGRAM.ambientColorUniform,
-                parseFloat("0"),
-                parseFloat("0"),
-                parseFloat("0")
+                0,
+                0,
+                0
             );
 
             this.GL.uniform3f(
                 this.SHADER_PROGRAM.pointLightingLocationUniform,
                 0.0,
                 0.0,
-                20.0
+                -20.0
             );
 
             this.GL.uniform3f(
@@ -360,11 +517,12 @@ var main = {
         
         mat4.identity(matrix.mv);
 
-        mat4.translate(matrix.mv, [0, 0, -70]); //my camera location
+        mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //my camera location
+        mat4.rotate(matrix.mv, util.degToRad(40), [1, 0, 0]);
         for (var i = 0; i < this.spheres.length; i++) {
             var target = this.spheres[i];
             util.mvPushMatrix();
-            mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].angle), [0, 1, 0]); //drawing moon
+            mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].orbitAngle), [0, 1, 0]); //drawing moon
             mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]); //check dis out
             
             this.GL.activeTexture(this.GL.TEXTURE0);
@@ -391,9 +549,10 @@ var main = {
         var timeNow = new Date().getTime();
         if (this.lastTime !== 0) {
             var elapsed = timeNow - this.lastTime;
-            
-            worldObjects.moon.angle += worldObjects.moon.speed * elapsed;
-            worldObjects.earth.angle += worldObjects.earth.speed * elapsed;
+            for (var i =0; i < this.spheres.length; i++) {
+                var target = this.spheres[i];                
+                worldObjects[target].orbitAngle += worldObjects[target].speed * elapsed;
+            }
         }
         this.lastTime = timeNow;
     },
@@ -417,7 +576,7 @@ var main = {
         
         this.initShaders();
         
-        this.spheres = ['earth', 'moon', 'sun']; // Easier to reuse code and process buffers together
+        this.spheres = ['sun','mercury', 'venus', 'earth', 'moon', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'space']; // Easier to reuse code and process buffers together
         this.initBuffers();
         
         this.initTextures();
