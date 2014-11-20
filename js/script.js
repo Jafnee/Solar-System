@@ -8,36 +8,46 @@ var source = {
             uniform mat4 uMVMatrix;\n\
             uniform mat4 uPMatrix;\n\
             uniform mat3 uNMatrix;\n\
-            uniform vec3 uAmbientColor;\n\
-            uniform vec3 uPointLightingLocation;\n\
-            uniform vec3 uPointLightingColor;\n\
-            uniform bool uUseLighting;\n\
             varying vec2 vTextureCoord;\n\
-            varying vec3 vLightWeighting;\n\
+            varying vec3 vTransformedNormal;\n\
+            varying vec4 vPosition;\n\
             void main(void) {\n\
-                vec4 mvPosition = uMVMatrix * vec4(aVertexPosition, 1.0);\n\
-                gl_Position = uPMatrix * mvPosition;\n\
+                vPosition = uMVMatrix * vec4(aVertexPosition, 1.0);\n\
+                gl_Position = uPMatrix * vPosition;\n\
                 vTextureCoord = aTextureCoord;\n\
-                if (!uUseLighting) {\n\
-                    vLightWeighting = vec3(1.0, 1.0, 1.0);\n\
-                } else {\n\
-                    vec3 lightDirection = normalize(uPointLightingLocation - mvPosition.xyz);\n\
-                    vec3 transformedNormal = uNMatrix * aVertexNormal;\n\
-                    float directionalLightWeighting = max(dot(transformedNormal, lightDirection), 0.0);\n\
-                    vLightWeighting = uAmbientColor + uPointLightingColor * directionalLightWeighting;\n\
-                }\n\
+                vTransformedNormal = uNMatrix * aVertexNormal;\n\
             }",
 
         fragment: "\n\
             precision mediump float;\n\
             varying vec2 vTextureCoord;\n\
-            varying vec3 vLightWeighting;\n\
+            varying vec3 vTransformedNormal;\n\
+            varying vec4 vPosition;\n\
+            uniform bool uUseLighting;\n\
+            uniform bool uUseTextures;\n\
+            uniform vec3 uAmbientColor;\n\
+            uniform vec3 uPointLightingLocation;\n\
+            uniform vec3 uPointLightingColor;\n\
             uniform sampler2D uSampler;\n\
             void main(void) {\n\
-                vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));\n\
-                gl_FragColor = vec4(textureColor.rgb * vLightWeighting, textureColor.a);\n\
-            }"
+                vec3 lightWeighting;\n\
+                if (!uUseLighting) {\n\
+                    lightWeighting = vec3(1.0, 1.0, 1.0);\n\
+                } else {\n\
+                    vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);\n\
+                    float directionalLightWeighting = max(dot(normalize(vTransformedNormal), lightDirection), 0.0);\n\
+                    lightWeighting = uAmbientColor + uPointLightingColor * directionalLightWeighting;\n\
+                }\n\
+                vec4 fragmentColor;\n\
+                if (uUseTextures) {\n\
+                    fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));\n\
+                } else {\n\
+                    fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);\n\
+                }\n\
+                gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);\n\
+            }"    
     },
+    
 /* MY TEXTURE SOURCE */
     texture: {        
         sun: 'images/textures/sunmap.jpg',
@@ -81,7 +91,7 @@ var worldObjects = {
         orbitAngle: 0,
         rotationAngle: 90,
         orbitSpeed: 0,
-        orbitDistance: 70,
+        orbitDistance: 0,
         rotateSpeed: 0.05,
         speed: -0.09,
         radius: 20,
@@ -314,6 +324,7 @@ var main = {
         this.SHADER_PROGRAM.mvMatrixUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uMVMatrix");
         this.SHADER_PROGRAM.nMatrixUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uNMatrix");
         this.SHADER_PROGRAM.samplerUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uSampler");
+        this.SHADER_PROGRAM.useTexturesUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseTextures");
         this.SHADER_PROGRAM.useLightingUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseLighting");
         this.SHADER_PROGRAM.ambientColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uAmbientColor");
         this.SHADER_PROGRAM.pointLightingLocationUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingLocation");
@@ -492,7 +503,7 @@ var main = {
         
         mat4.perspective(45, this.GL.viewportWidth / this.GL.viewportHeight, 0.1, 1000.0, matrix.p);
         
-        var lighting = true;
+        var lighting = true; //for debug
         
         this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, lighting);
         if (lighting) {
@@ -518,6 +529,9 @@ var main = {
             );
         }
         
+        var textures = true; // for debug;
+        this.GL.uniform1i(this.SHADER_PROGRAM.useTexturesUniform, textures);
+        
         mat4.identity(matrix.mv);
 
         mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //my camera location
@@ -525,9 +539,13 @@ var main = {
         for (var i = 0; i < this.spheres.length; i++) {
             var target = this.spheres[i];
             util.mvPushMatrix();
-            if (target === 'ssun') {
+            if (target === 'sun') {
+                lighting = false; // for debug;
+                this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, lighting);
                 mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].rotationAngle),[0,1,0]);
             } else {
+                lighting = true; // for debug;
+                this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, lighting);
                 mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].rotationAngle), [0, 1, 0]);
                 mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]);
             }
@@ -583,7 +601,7 @@ var main = {
         
         this.initShaders();
         //'sun','mercury', 'venus', 'earth', 'moon', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'space'
-        this.spheres = ['sun','earth']; // Easier to reuse code and process buffers together
+        this.spheres = ['sun','mercury', 'venus', 'earth', 'moon', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'space']; // Easier to reuse code and process buffers together
         this.initBuffers();
         
         this.initTextures();
@@ -594,7 +612,7 @@ var main = {
         
         this.GL.clearColor(0.0, 0.0, 0.0 ,1.0);
         this.GL.enable(this.GL.DEPTH_TEST);
-        this.GL.depthFunc(this.GL.LEQUAL);
+        //this.GL.depthFunc(this.GL.LEQUAL);
         /* Mouse Input */    
         
         /* Animation */
