@@ -57,20 +57,20 @@ var source = {
 var worldObjects = {
     camera: {
         x: 0.0,
-        y: -10.0,
+        y: 0.0,
         z: -200.0
     },
     
     lighting: {
         ambient: {
-            r: 0.8,
-            g: 0.8,
-            b: 0.8
+            r: 0.05,
+            g: 0.05,
+            b: 0.05
         },
         point: {
             x: 0.0,
             y: 0.0,
-            z: -20.0,
+            z: -200.0,
             r: 0.8,
             g: 0.8,
             b: 0.8
@@ -78,12 +78,12 @@ var worldObjects = {
     },
 /* Planets & Sun */    
     sun: {
-        angle: 0,
         orbitAngle: 0,
-        orbitSpeed: 0.05,
-        orbitDistance: 0,
-        rotateSpeed: 1,
-        speed: 0.05,
+        rotationAngle: 90,
+        orbitSpeed: 0,
+        orbitDistance: 70,
+        rotateSpeed: 0.05,
+        speed: -0.09,
         radius: 20,
         latitudeBands: 60,
         longitudeBands: 60
@@ -91,11 +91,11 @@ var worldObjects = {
     
     mercury: {
         angle: 0,
-        orbitAngle: 180,
+        rotationAngle: 700,
         orbitSpeed: 0.05,
         orbitDistance: 30,
         rotateSpeed: 1,
-        speed: 0.05,
+        speed: 0.1,
         radius: 0.35,
         latitudeBands: 60,
         longitudeBands: 60
@@ -103,7 +103,7 @@ var worldObjects = {
     
     venus: {
         angle: 0,
-        orbitAngle: 180,
+        rotationAngle: 180,
         orbitSpeed: 0.05,
         orbitDistance: 35,
         rotateSpeed: 1,
@@ -115,19 +115,19 @@ var worldObjects = {
     
     earth: {
         angle: 0,
-        orbitAngle: 180,
+        rotationAngle: 180,
         orbitSpeed: 0.05,
-        orbitDistance: 15,
+        orbitDistance: 40,
         rotateSpeed: 1,
         speed: 0.07,
-        radius: 0.91,
+        radius: 10,
         latitudeBands: 60,
         longitudeBands: 60
     },
     
     moon: {
         angle: 0,
-        orbitAngle: 270,
+        rotationAngle: 270,
         orbitSpeed: 0.05,
         orbitDistance: 16,
         rotateSpeed: 1,
@@ -139,7 +139,7 @@ var worldObjects = {
     
     mars: {
         angle: 180,
-        orbitAngle: 180,
+        rotationAngle: 180,
         orbitSpeed: 15,
         orbitDistance: 20,
         rotateSpeed: 1,
@@ -151,7 +151,7 @@ var worldObjects = {
     
     jupiter: {
         angle: 0,
-        orbitAngle: 180,
+        rotationAngle: 180,
         orbitSpeed: 0.05,
         orbitDistance: 40,
         rotateSpeed: 1,
@@ -163,7 +163,7 @@ var worldObjects = {
     
     saturn: {
         angle: 0,
-        orbitAngle: 180,
+        rotationAngle: 180,
         orbitSpeed: 0.05,
         orbitDistance: 70,
         rotateSpeed: 1,
@@ -175,7 +175,7 @@ var worldObjects = {
     
     uranus: {
         angle: 0,
-        orbitAngle: 180,
+        rotationAngle: 180,
         orbitSpeed: 0.05,
         orbitDistance: 90,
         rotateSpeed: 1,
@@ -187,7 +187,7 @@ var worldObjects = {
     
     neptune: {
         angle: 0,
-        orbitAngle: 180,
+        rotationAngle: 180,
         orbitSpeed: 0.05,
         orbitDistance: 99,
         rotateSpeed: 1,
@@ -198,7 +198,7 @@ var worldObjects = {
     },
 /* Background */
     space: {
-        orbitAngle: 0,
+        rotationAngle: 0,
         orbitSpeed: 0,
         orbitDistance: 0,
         rotateSpeed: 0,
@@ -206,7 +206,7 @@ var worldObjects = {
         radius: 400,
         latitudeBands: 160,
         longitudeBands: 160
-    },
+    }
 };
 
 var buffer = {};
@@ -277,8 +277,7 @@ var main = {
     initGL: function(canvas) {
         var GL;
         GL = canvas.getContext("webgl", {antialias: true}) || canvas.getContext("experimental-webgl", {antialias: true}); //webgl > experimental
-        GL.viewportWidth = canvas.width; // temp
-        GL.viewportHeight = canvas.height; // see what happens
+         // see what happens
         
         if(!GL) {
             alert("ERROR: WebGL failed to initialise");
@@ -315,10 +314,10 @@ var main = {
         this.SHADER_PROGRAM.mvMatrixUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uMVMatrix");
         this.SHADER_PROGRAM.nMatrixUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uNMatrix");
         this.SHADER_PROGRAM.samplerUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uSampler");
-        this.SHADER_PROGRAM.userLightingUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseLighting");
+        this.SHADER_PROGRAM.useLightingUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseLighting");
         this.SHADER_PROGRAM.ambientColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uAmbientColor");
-        this.SHADER_PROGRAM.lightingDirectionUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingLocation");
-        this.SHADER_PROGRAM.directionalColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingColor");
+        this.SHADER_PROGRAM.pointLightingLocationUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingLocation");
+        this.SHADER_PROGRAM.pointLightingColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingColor");
     },
     
     
@@ -484,6 +483,10 @@ var main = {
     
     
     draw: function draw() {
+        this.CANVAS.width = window.innerWidth;
+        this.CANVAS.height = window.innerHeight;
+        this.GL.viewportWidth = this.CANVAS.width;
+        this.GL.viewportHeight = this.CANVAS.height;
         this.GL.viewport(0.0, 0.0, this.GL.viewportWidth, this.GL.viewportHeight);
         this.GL.clear(this.GL.COLOR_BUFFER_BIT | this.GL.DEPTH_BUFFER_BIT);
         
@@ -495,35 +498,39 @@ var main = {
         if (lighting) {
             this.GL.uniform3f(
                 this.SHADER_PROGRAM.ambientColorUniform,
-                0,
-                0,
-                0
+                worldObjects.lighting.ambient.r,
+                 worldObjects.lighting.ambient.g,
+                 worldObjects.lighting.ambient.b
             );
 
             this.GL.uniform3f(
                 this.SHADER_PROGRAM.pointLightingLocationUniform,
-                0.0,
-                0.0,
-                -20.0
+                worldObjects.lighting.point.x,
+                worldObjects.lighting.point.y,
+                worldObjects.lighting.point.z
             );
 
             this.GL.uniform3f(
                 this.SHADER_PROGRAM.pointLightingColorUniform,
-                0.0,
-                0.0,
-                0.0
+                worldObjects.lighting.point.r,
+                worldObjects.lighting.point.g,
+                worldObjects.lighting.point.b
             );
         }
         
         mat4.identity(matrix.mv);
 
         mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //my camera location
-        mat4.rotate(matrix.mv, util.degToRad(40), [1, 0, 0]);
+        //mat4.rotate(matrix.mv, util.degToRad(40), [1, 0, 0]);
         for (var i = 0; i < this.spheres.length; i++) {
             var target = this.spheres[i];
             util.mvPushMatrix();
-            mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].orbitAngle), [0, 1, 0]); //drawing moon
-            mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]); //check dis out
+            if (target === 'ssun') {
+                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].rotationAngle),[0,1,0]);
+            } else {
+                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].rotationAngle), [0, 1, 0]);
+                mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]);
+            }
             
             this.GL.activeTexture(this.GL.TEXTURE0);
             this.GL.bindTexture(this.GL.TEXTURE_2D, texture[target]);// look here
@@ -550,8 +557,8 @@ var main = {
         if (this.lastTime !== 0) {
             var elapsed = timeNow - this.lastTime;
             for (var i =0; i < this.spheres.length; i++) {
-                var target = this.spheres[i];                
-                worldObjects[target].orbitAngle += worldObjects[target].speed * elapsed;
+                var target = this.spheres[i];
+                worldObjects[target].rotationAngle += worldObjects[target].speed * elapsed;
             }
         }
         this.lastTime = timeNow;
@@ -575,8 +582,8 @@ var main = {
         this.GL = this.initGL(this.CANVAS);
         
         this.initShaders();
-        
-        this.spheres = ['sun','mercury', 'venus', 'earth', 'moon', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'space']; // Easier to reuse code and process buffers together
+        //'sun','mercury', 'venus', 'earth', 'moon', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'space'
+        this.spheres = ['sun','earth']; // Easier to reuse code and process buffers together
         this.initBuffers();
         
         this.initTextures();
@@ -586,7 +593,8 @@ var main = {
         matrix.p = mat4.create();
         
         this.GL.clearColor(0.0, 0.0, 0.0 ,1.0);
-        this.GL.enable(this.GL.DEPTH_TEST);        
+        this.GL.enable(this.GL.DEPTH_TEST);
+        this.GL.depthFunc(this.GL.LEQUAL);
         /* Mouse Input */    
         
         /* Animation */
