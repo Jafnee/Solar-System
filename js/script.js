@@ -23,11 +23,14 @@ var source = {
             varying vec2 vTextureCoord;\n\
             varying vec3 vTransformedNormal;\n\
             varying vec4 vPosition;\n\
+            uniform float uMaterialShininess;\n\
+            uniform bool uShowSpecularHighlights;\n\
             uniform bool uUseLighting;\n\
             uniform bool uUseTextures;\n\
             uniform vec3 uAmbientColor;\n\
             uniform vec3 uPointLightingLocation;\n\
-            uniform vec3 uPointLightingColor;\n\
+            uniform vec3 uPointLightingSpecularColor;\n\
+            uniform vec3 uPointLightingDiffuseColor;\n\
             uniform sampler2D uSampler;\n\
             void main(void) {\n\
                 vec3 lightWeighting;\n\
@@ -35,8 +38,15 @@ var source = {
                     lightWeighting = vec3(1.0, 1.0, 1.0);\n\
                 } else {\n\
                     vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);\n\
-                    float directionalLightWeighting = max(dot(normalize(vTransformedNormal), lightDirection), 0.0);\n\
-                    lightWeighting = uAmbientColor + uPointLightingColor * directionalLightWeighting;\n\
+                    vec3 normal = normalize(vTransformedNormal);\n\
+                    float specularLightWeighting = 0.0;\n\
+                    if (uShowSpecularHighlights) {\n\
+                        vec3 eyeDirection = normalize(-vPosition.xyz);\n\
+                        vec3 reflectionDirection = reflect(-lightDirection, normal);\n\
+                        specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), uMaterialShininess);\n\
+                    }\n\
+                    float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);\n\
+                    lightWeighting = uAmbientColor + uPointLightingSpecularColor * specularLightWeighting + uPointLightingDiffuseColor * diffuseLightWeighting;\n\
                 }\n\
                 vec4 fragmentColor;\n\
                 if (uUseTextures) {\n\
@@ -73,14 +83,24 @@ var worldObjects = {
     
     lighting: {
         ambient: {
-            r: 0.05,
-            g: 0.05,
-            b: 0.05
+            r: 0.07,
+            g: 0.07,
+            b: 0.07
         },
         point: {
             x: 0.0,
             y: 0.0,
             z: -200.0,
+            r: 0.8,
+            g: 0.8,
+            b: 0.8
+        },
+        specular: {
+            r: 0.5,
+            g: 0.5,
+            b: 0.5
+        },
+        diffuse: {
             r: 0.8,
             g: 0.8,
             b: 0.8
@@ -96,7 +116,8 @@ var worldObjects = {
         speed: -0.09,
         radius: 20,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 1
     },
     
     mercury: {
@@ -108,7 +129,8 @@ var worldObjects = {
         speed: 0.1,
         radius: 0.35,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 90
     },
     
     venus: {
@@ -120,7 +142,8 @@ var worldObjects = {
         speed: 0.09,
         radius:0.86,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 90
     },
     
     earth: {
@@ -132,7 +155,8 @@ var worldObjects = {
         speed: 0.07,
         radius: 10,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 90
     },
     
     moon: {
@@ -144,7 +168,8 @@ var worldObjects = {
         speed: 0.09,
         radius: 0.091,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 80
     },
     
     mars: {
@@ -156,7 +181,8 @@ var worldObjects = {
         speed: 0.03,
         radius: 0.48,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 80
     },
     
     jupiter: {
@@ -168,7 +194,8 @@ var worldObjects = {
         speed: 0.02,
         radius: 10,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 10
     },
     
     saturn: {
@@ -180,7 +207,8 @@ var worldObjects = {
         speed: 0.078,
         radius: 8.6,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 10
     },
     
     uranus: {
@@ -192,7 +220,8 @@ var worldObjects = {
         speed: 0.058,
         radius: 3.6,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 10
     },
     
     neptune: {
@@ -204,7 +233,8 @@ var worldObjects = {
         speed: 0.05,
         radius: 3.5,
         latitudeBands: 60,
-        longitudeBands: 60
+        longitudeBands: 60,
+        shine: 10
     },
 /* Background */
     space: {
@@ -213,9 +243,10 @@ var worldObjects = {
         orbitDistance: 0,
         rotateSpeed: 0,
         speed: 0,
-        radius: 400,
+        radius: 200,
         latitudeBands: 160,
-        longitudeBands: 160
+        longitudeBands: 160,
+        shine: 1
     }
 };
 
@@ -329,6 +360,10 @@ var main = {
         this.SHADER_PROGRAM.ambientColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uAmbientColor");
         this.SHADER_PROGRAM.pointLightingLocationUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingLocation");
         this.SHADER_PROGRAM.pointLightingColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingColor");
+        this.SHADER_PROGRAM.materialShininessUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uMaterialShininess");
+        this.SHADER_PROGRAM.showSpecularHighlightsUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uShowSpecularHighlights");
+        this.SHADER_PROGRAM.pointLightingSpecularColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingSpecularColor");
+        this.SHADER_PROGRAM.pointLightingDiffuseColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingDiffuseColor");
     },
     
     
@@ -503,8 +538,9 @@ var main = {
         
         mat4.perspective(45, this.GL.viewportWidth / this.GL.viewportHeight, 0.1, 1000.0, matrix.p);
         
-        var lighting = true; //for debug
-        
+        var specularHighlights = true;
+        this.GL.uniform1i(this.SHADER_PROGRAM.showSpecularHighlightsUniform, specularHighlights);        
+        var lighting = true; //for debug        
         this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, lighting);
         if (lighting) {
             this.GL.uniform3f(
@@ -520,15 +556,21 @@ var main = {
                 worldObjects.lighting.point.y,
                 worldObjects.lighting.point.z
             );
+            
+            this.GL.uniform3f(
+                this.SHADER_PROGRAM.pointLightingSpecularColorUniform,
+                worldObjects.lighting.specular.r,
+                worldObjects.lighting.specular.g,
+                worldObjects.lighting.specular.b
+            );
 
             this.GL.uniform3f(
-                this.SHADER_PROGRAM.pointLightingColorUniform,
-                worldObjects.lighting.point.r,
-                worldObjects.lighting.point.g,
-                worldObjects.lighting.point.b
-            );
-        }
-        
+                this.SHADER_PROGRAM.pointLightingDiffuseColorUniform,
+                worldObjects.lighting.diffuse.r,
+                worldObjects.lighting.diffuse.g,
+                worldObjects.lighting.diffuse.b
+            );            
+        }        
         var textures = true; // for debug;
         this.GL.uniform1i(this.SHADER_PROGRAM.useTexturesUniform, textures);
         
@@ -539,6 +581,7 @@ var main = {
         for (var i = 0; i < this.spheres.length; i++) {
             var target = this.spheres[i];
             util.mvPushMatrix();
+            this.GL.uniform1f(this.SHADER_PROGRAM.materialShininessUniform, worldObjects[target].shine);
             if (target === 'sun') {
                 lighting = false; // for debug;
                 this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, lighting);
