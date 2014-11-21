@@ -97,14 +97,14 @@ var worldObjects = {
             b: 0.8
         },
         specular: {
-            r: 0.5,
-            g: 0.5,
-            b: 0.5
+            r: 0.4,
+            g: 0.4,
+            b: 0.4
         },
         diffuse: {
-            r: 0.5,
-            g: 0.5,
-            b: 0.5
+            r: 0.8,
+            g: 0.8,
+            b: 0.8
         }
     },
 /* Planets & Sun */
@@ -126,28 +126,28 @@ var worldObjects = {
         currentSpin: 0,
         currentOrbit: 20,
         parent: 'sun',
-        spinAngle: 0.01,
+        spinAngle: 0.1,
         orbitAngle: 0.05,        
         orbitDistance: 35,
         
         radius: 3,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 20
+        shine: 1
     },
     
     venus: {
         currentSpin: 0,
         currentOrbit: 70,
         parent: 'sun',
-        spinAngle: 0.01,
+        spinAngle: -0.04,
         orbitAngle: 0.01,
         orbitDistance: 50,
         
         radius: 3,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 20
+        shine: 1
     },
     
     earth: {
@@ -161,7 +161,7 @@ var worldObjects = {
         radius: 5,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 40
+        shine: 9
     },
     
     moon: {
@@ -175,7 +175,7 @@ var worldObjects = {
         radius: 2,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 1
+        shine: 6
     },
     
     mars: {
@@ -203,7 +203,7 @@ var worldObjects = {
         radius: 9,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 70
+        shine: 30
     },
     
     saturn: {
@@ -217,7 +217,7 @@ var worldObjects = {
         radius: 7.6,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 70,
+        shine: 20,
         ringScale: 18
     },
     
@@ -226,13 +226,13 @@ var worldObjects = {
         currentOrbit: 170,
         parent: 'sun',
         spinAngle: 0.02,
-        orbitAngle: 0.004,        
+        orbitAngle: 0.009,        
         orbitDistance: 190,
         
         radius: 4.5,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 60
+        shine: 20
     },
     
     neptune: {
@@ -240,15 +240,16 @@ var worldObjects = {
         currentOrbit: 0,
         parent: 'sun',
         spinAngle: 0.02,
-        orbitAngle: 0.002,        
+        orbitAngle: 0.007,        
         orbitDistance: 210,
         
         radius: 4.6,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 60
+        shine: 30
     },
 /* Background */
+    /* extra */
     space: {
         currentSpin: 0,
         currentOrbit: 0,
@@ -323,7 +324,6 @@ var util = {
         matrix.mv = main.mvMatrixStack.pop();
     }
     
-    /* Mouse Events */
 
 };
 
@@ -724,7 +724,7 @@ var main = {
             var target = this.spheres[i];
             
             util.mvPushMatrix();
-            
+            /* exta Each planet reflects light differently. */ 
             this.GL.uniform1f(this.SHADER_PROGRAM.materialShininessUniform, worldObjects[target].shine);
             if (target === 'sun') {
                 this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, false);
@@ -732,8 +732,11 @@ var main = {
                 this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, true);
             }
             mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //goes to my 'origin'
-            mat4.rotate(matrix.mv, util.degToRad(20), [1, 0, 0]);
+            mat4.rotate(matrix.mv, util.degToRad(15), [1, 0, 0]);
             if (target !== 'moon') {
+                if (target === 'mars') {
+                    mat4.rotate(matrix.mv, util.degToRad(15), [0, 0, 1]);
+                }
                 mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].currentOrbit), [0, 1, 0]);
                 mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]); // draws planet x distance from sun
                 mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].currentSpin), [0, 1, 0]);
@@ -773,7 +776,7 @@ var main = {
         // saturn ring
         mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //goes to my 'origin'
         var scale = worldObjects.saturn.ringScale;
-        mat4.rotate(matrix.mv, util.degToRad(20), [1, 0, 0]);        
+        mat4.rotate(matrix.mv, util.degToRad(15), [1, 0, 0]);        
         mat4.rotate(matrix.mv, util.degToRad(worldObjects.saturn.currentOrbit), [0, 1, 0]);
         mat4.translate(matrix.mv, [worldObjects.saturn.orbitDistance, 0, 0]); 
         mat4.rotate(matrix.mv, util.degToRad(worldObjects.saturn.currentSpin), [0, 1, 0]);
