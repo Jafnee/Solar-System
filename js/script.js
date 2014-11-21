@@ -184,9 +184,9 @@ var worldObjects = {
         parent: 'sun',
         spinAngle: 0.2,
         orbitAngle: 0.04,        
-        orbitDistance: 80,
+        orbitDistance: 84,
         
-        radius: 1.6,
+        radius: 3,
         latitudeBands: 60,
         longitudeBands: 60,
         shine: 10
