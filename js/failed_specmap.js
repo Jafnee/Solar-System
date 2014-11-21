@@ -23,15 +23,15 @@ var source = {
             varying vec2 vTextureCoord;\n\
             varying vec3 vTransformedNormal;\n\
             varying vec4 vPosition;\n\
-            uniform float uMaterialShininess;\n\
-            uniform bool uShowSpecularHighlights;\n\
+            uniform bool uUseColorMap;\n\
+            uniform bool uUseSpecularMap;\n\
             uniform bool uUseLighting;\n\
-            uniform bool uUseTextures;\n\
             uniform vec3 uAmbientColor;\n\
             uniform vec3 uPointLightingLocation;\n\
             uniform vec3 uPointLightingSpecularColor;\n\
             uniform vec3 uPointLightingDiffuseColor;\n\
-            uniform sampler2D uSampler;\n\
+            uniform sampler2D uColorMapSampler;\n\
+            uniform sampler2D uSpecularMapSampler;\n\
             void main(void) {\n\
                 vec3 lightWeighting;\n\
                 if (!uUseLighting) {\n\
@@ -40,17 +40,21 @@ var source = {
                     vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);\n\
                     vec3 normal = normalize(vTransformedNormal);\n\
                     float specularLightWeighting = 0.0;\n\
-                    if (uShowSpecularHighlights) {\n\
+                    float shininess = 32.0;\n\
+                    if (uUseSpecularMap) {\n\
+                        shininess = texture2D(uSpecularMapSampler, vec2(vTextureCoord.s, vTextureCoord.t)).r * 255.0;\n\
+                    }\n\
+                    if (shininess < 255.0) {\n\
                         vec3 eyeDirection = normalize(-vPosition.xyz);\n\
                         vec3 reflectionDirection = reflect(-lightDirection, normal);\n\
-                        specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), uMaterialShininess);\n\
+                        specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), shininess);\n\
                     }\n\
                     float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);\n\
                     lightWeighting = uAmbientColor + uPointLightingSpecularColor * specularLightWeighting + uPointLightingDiffuseColor * diffuseLightWeighting;\n\
                 }\n\
                 vec4 fragmentColor;\n\
-                if (uUseTextures) {\n\
-                    fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));\n\
+                if (uUseColorMap) {\n\
+                    fragmentColor = texture2D(uColorMapSampler, vec2(vTextureCoord.s, vTextureCoord.t));\n\
                 } else {\n\
                     fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);\n\
                 }\n\
@@ -64,34 +68,34 @@ var source = {
         mercury: 'images/textures/mercurymap.jpg',
         venus: 'images/textures/venusmap.jpg',
         earth: 'images/textures/earthmap1k.jpg',
+        earthSpec: 'images/textures/earthspec1k.jpg',
         moon: 'images/textures/moon.gif',
         mars: 'images/textures/marsmap1k.jpg',
         jupiter: 'images/textures/jupitermap.jpg',
         saturn: 'images/textures/saturnmap.jpg',
-        saturnRing: 'images/textures/ringsRGBA.png',
         uranus: 'images/textures/uranusmap.jpg',
         neptune: 'images/textures/neptunemap.jpg',
-        space: 'images/textures/spacemap.png'
+        space: 'images/textures/spacemap.jpg'
     }
 };
 
 var worldObjects = {
     camera: {
         x: 0.0,
-        y: -10.0,
-        z: -170.0
+        y: 0.0,
+        z: -200.0
     },
     
     lighting: {
         ambient: {
-            r: 0.09,
-            g: 0.09,
-            b: 0.09
+            r: 0.07,
+            g: 0.07,
+            b: 0.07
         },
         point: {
             x: 0.0,
-            y: -10.0,
-            z: -170.0,
+            y: 0.0,
+            z: -200.0,
             r: 0.8,
             g: 0.8,
             b: 0.8
@@ -102,165 +106,152 @@ var worldObjects = {
             b: 0.5
         },
         diffuse: {
-            r: 0.5,
-            g: 0.5,
-            b: 0.5
+            r: 0.8,
+            g: 0.8,
+            b: 0.8
         }
     },
-/* Planets & Sun */
-
+/* Planets & Sun */    
     sun: {
-        currentSpin: 0,
-        currentOrbit: 0,
-        spinAngle: 0.008,
-        orbitAngle: 0,        
+        orbitAngle: 0,
+        rotationAngle: 90,
+        orbitSpeed: 0,
         orbitDistance: 0,
-        
+        rotateSpeed: 0.05,
+        speed: -0.09,
         radius: 20,
-        latitudeBands: 60,
-        longitudeBands: 60,
-        shine: 100
-    },
-    
-    mercury: {
-        currentSpin: 0,
-        currentOrbit: 20,
-        parent: 'sun',
-        spinAngle: 0.01,
-        orbitAngle: 0.05,        
-        orbitDistance: 35,
-        
-        radius: 3,
-        latitudeBands: 60,
-        longitudeBands: 60,
-        shine: 20
-    },
-    
-    venus: {
-        currentSpin: 0,
-        currentOrbit: 70,
-        parent: 'sun',
-        spinAngle: 0.01,
-        orbitAngle: 0.01,
-        orbitDistance: 50,
-        
-        radius: 3,
-        latitudeBands: 60,
-        longitudeBands: 60,
-        shine: 20
-    },
-    
-    earth: {
-        currentSpin: 0,
-        currentOrbit: 30,
-        parent: 'sun',
-        spinAngle: 0.4,
-        orbitAngle: 0.02,
-        orbitDistance: 70,
-        
-        radius: 5,
-        latitudeBands: 60,
-        longitudeBands: 60,
-        shine: 40
-    },
-    
-    moon: {
-        currentSpin: 0,
-        currentOrbit: 0,
-        parent: 'earth',
-        spinAngle: 0.01,
-        orbitAngle: 0.09,
-        orbitDistance: 10,
-        
-        radius: 2,
         latitudeBands: 60,
         longitudeBands: 60,
         shine: 1
     },
     
+    mercury: {
+        angle: 0,
+        rotationAngle: 700,
+        orbitSpeed: 0.05,
+        orbitDistance: 30,
+        rotateSpeed: 1,
+        speed: 0.1,
+        radius: 1,
+        latitudeBands: 60,
+        longitudeBands: 60,
+        shine: 90
+    },
+    
+    venus: {
+        angle: 0,
+        rotationAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 35,
+        rotateSpeed: 1,
+        speed: 0.09,
+        radius:1,
+        latitudeBands: 60,
+        longitudeBands: 60,
+        shine: 90
+    },
+    
+    earth: {
+        angle: 0,
+        rotationAngle: 180,
+        orbitSpeed: 0.1,
+        orbitDistance: 40,
+        rotateSpeed: 1,
+        speed: 0.07,
+        radius: 11,
+        latitudeBands: 160,
+        longitudeBands: 160,
+        shine: 90
+    },
+    
+    moon: {
+        angle: 0,
+        rotationAngle: 270,
+        orbitSpeed: 0.05,
+        orbitDistance: 49,
+        rotateSpeed: 1,
+        speed: 0.09,
+        radius: 0.091,
+        latitudeBands: 60,
+        longitudeBands: 60,
+        shine: 80
+    },
+    
     mars: {
-        currentSpin: 0,
-        currentOrbit: 11,
-        parent: 'sun',
-        spinAngle: 0.2,
-        orbitAngle: 0.04,        
-        orbitDistance: 80,
-        
-        radius: 1.6,
+        angle: 180,
+        rotationAngle: 180,
+        orbitSpeed: 15,
+        orbitDistance: 60,
+        rotateSpeed: 1,
+        speed: 0.03,
+        radius: 0.48,
+        latitudeBands: 60,
+        longitudeBands: 60,
+        shine: 80
+    },
+    
+    jupiter: {
+        angle: 0,
+        rotationAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 70,
+        rotateSpeed: 1,
+        speed: 0.02,
+        radius: 10,
         latitudeBands: 60,
         longitudeBands: 60,
         shine: 10
     },
     
-    jupiter: {
-        currentSpin: 0,
-        currentOrbit: 300,
-        parent: 'sun',
-        spinAngle: -0.2,
-        orbitAngle: 0.01,        
-        orbitDistance: 105,
-        
-        radius: 9,
-        latitudeBands: 60,
-        longitudeBands: 60,
-        shine: 70
-    },
-    
     saturn: {
-        currentSpin: 0,
-        currentOrbit: 270,
-        parent: 'sun',
-        spinAngle: 0.02,
-        orbitAngle: 0.0199,        
-        orbitDistance: 140,
-        
-        radius: 7.6,
+        angle: 0,
+        rotationAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 80,
+        rotateSpeed: 1,
+        speed: 0.078,
+        radius: 8.6,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 70,
-        ringScale: 18
+        shine: 10
     },
     
     uranus: {
-        currentSpin: 0,
-        currentOrbit: 170,
-        parent: 'sun',
-        spinAngle: 0.02,
-        orbitAngle: 0.004,        
-        orbitDistance: 190,
-        
-        radius: 4.5,
+        angle: 0,
+        rotationAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 90,
+        rotateSpeed: 1,
+        speed: 0.058,
+        radius: 3.6,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 60
+        shine: 10
     },
     
     neptune: {
-        currentSpin: 0,
-        currentOrbit: 0,
-        parent: 'sun',
-        spinAngle: 0.02,
-        orbitAngle: 0.002,        
-        orbitDistance: 210,
-        
-        radius: 4.6,
+        angle: 0,
+        rotationAngle: 180,
+        orbitSpeed: 0.05,
+        orbitDistance: 99,
+        rotateSpeed: 1,
+        speed: 0.05,
+        radius: 3.5,
         latitudeBands: 60,
         longitudeBands: 60,
-        shine: 60
+        shine: 10
     },
 /* Background */
     space: {
-        currentSpin: 0,
-        currentOrbit: 0,
-        parent: 'sun',
-        spinAngle: 0,
-        orbitAngle: 0,        
+        rotationAngle: 0,
+        orbitSpeed: 0,
         orbitDistance: 0,
-        
-        radius: 300,
-        latitudeBands: 80,
-        longitudeBands: 80,
-        shine: 30
+        rotateSpeed: 0,
+        speed: 0,
+        radius: 200,
+        latitudeBands: 160,
+        longitudeBands: 160,
+        shine: 1
     }
 };
 
@@ -331,7 +322,9 @@ var util = {
 var main = {
     initGL: function(canvas) {
         var GL;
-        GL = canvas.getContext("webgl", {antialias: true}) || canvas.getContext("experimental-webgl", {antialias: true}); //webgl > experimental        
+        GL = canvas.getContext("webgl", {antialias: true}) || canvas.getContext("experimental-webgl", {antialias: true}); //webgl > experimental
+         // see what happens
+        
         if(!GL) {
             alert("ERROR: WebGL failed to initialise");
         }
@@ -353,27 +346,26 @@ var main = {
         }
         
         this.GL.useProgram(this.SHADER_PROGRAM);
-        
-        this.SHADER_PROGRAM.vertexPositionAttribute = this.GL.getAttribLocation(this.SHADER_PROGRAM, "aVertexPosition");     
+
+        this.SHADER_PROGRAM.vertexPositionAttribute = this.GL.getAttribLocation(this.SHADER_PROGRAM, "aVertexPosition");
         this.GL.enableVertexAttribArray(this.SHADER_PROGRAM.vertexPositionAttribute);
-        
-        this.SHADER_PROGRAM.textureCoordAttribute = this.GL.getAttribLocation(this.SHADER_PROGRAM, "aTextureCoord");
-        this.GL.enableVertexAttribArray(this.SHADER_PROGRAM.textureCoordAttribute);
-        
+
         this.SHADER_PROGRAM.vertexNormalAttribute = this.GL.getAttribLocation(this.SHADER_PROGRAM, "aVertexNormal");
         this.GL.enableVertexAttribArray(this.SHADER_PROGRAM.vertexNormalAttribute);
-        
+
+        this.SHADER_PROGRAM.textureCoordAttribute = this.GL.getAttribLocation(this.SHADER_PROGRAM, "aTextureCoord");
+        this.GL.enableVertexAttribArray(this.SHADER_PROGRAM.textureCoordAttribute);
+
         this.SHADER_PROGRAM.pMatrixUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPMatrix");
         this.SHADER_PROGRAM.mvMatrixUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uMVMatrix");
         this.SHADER_PROGRAM.nMatrixUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uNMatrix");
-        this.SHADER_PROGRAM.samplerUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uSampler");
-        this.SHADER_PROGRAM.useTexturesUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseTextures");
+        this.SHADER_PROGRAM.colorMapSamplerUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uColorMapSampler");
+        this.SHADER_PROGRAM.specularMapSamplerUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uSpecularMapSampler");
+        this.SHADER_PROGRAM.useColorMapUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseColorMap");
+        this.SHADER_PROGRAM.useSpecularMapUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseSpecularMap");
         this.SHADER_PROGRAM.useLightingUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uUseLighting");
         this.SHADER_PROGRAM.ambientColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uAmbientColor");
         this.SHADER_PROGRAM.pointLightingLocationUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingLocation");
-        this.SHADER_PROGRAM.pointLightingColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingColor");
-        this.SHADER_PROGRAM.materialShininessUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uMaterialShininess");
-        this.SHADER_PROGRAM.showSpecularHighlightsUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uShowSpecularHighlights");
         this.SHADER_PROGRAM.pointLightingSpecularColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingSpecularColor");
         this.SHADER_PROGRAM.pointLightingDiffuseColorUniform = this.GL.getUniformLocation(this.SHADER_PROGRAM, "uPointLightingDiffuseColor");
     },
@@ -456,133 +448,7 @@ var main = {
             this.GL.bufferData(this.GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), this.GL.STATIC_DRAW);
             buffer[target].vertexIndexItemSize = 1;
             buffer[target].vertexIndexNumItems = indexData.length;
-        }
-        
-        buffer.saturnRing = {};
-        buffer.saturnRing.vertexPosition = this.GL.createBuffer();
-        this.GL.bindBuffer(this.GL.ARRAY_BUFFER, buffer.saturnRing.vertexPosition);
-        var vertices = [
-            -1.0, 0.0,  1.0,
-             1.0, 0.0,  1.0,
-             1.0,  0.0,  1.0,
-            -1.0,  0.0,  1.0,
-
-            -1.0, 0.0, -1.0,
-            -1.0,  0.0, -1.0,
-             1.0,  0.0, -1.0,
-             1.0, 0.0, -1.0,
-
-            -1.0,  0.0, -1.0,
-            -1.0,  0.0,  1.0,
-             1.0,  0.0,  1.0,
-             1.0,  0.0, -1.0,
-
-            -1.0, 0.0, -1.0,
-             1.0, 0.0, -1.0,
-             1.0, 0.0,  1.0,
-            -1.0, 0.0,  1.0,
-
-             1.0, 0.0, -1.0,
-             1.0,  0.0, -1.0,
-             1.0,  0.0,  1.0,
-             1.0, 0.0,  1.0,
-
-            -1.0, 0.0, -1.0,
-            -1.0, 0.0,  1.0,
-            -1.0,  0.0,  1.0,
-            -1.0,  0.0, -1.0
-        ];
-        this.GL.bufferData(this.GL.ARRAY_BUFFER, new Float32Array(vertices), this.GL.STATIC_DRAW);
-        buffer.saturnRing.vertexPositionItemSize = 3;
-        buffer.saturnRing.vertexPositionNumItems = 24;
-        
-        buffer.saturnRing.vertexNormal = this.GL.createBuffer();
-        this.GL.bindBuffer(this.GL.ARRAY_BUFFER, buffer.saturnRing.vertexNormal);
-        var vertexNormals = [
-             0.0,  0.0,  1.0,
-             0.0,  0.0,  1.0,
-             0.0,  0.0,  1.0,
-             0.0,  0.0,  1.0,
-
-             0.0,  0.0, -1.0,
-             0.0,  0.0, -1.0,
-             0.0,  0.0, -1.0,
-             0.0,  0.0, -1.0,
-
-             0.0,  0,  0.0,
-             0.0,  0,  0.0,
-             0.0,  0,  0.0,
-             0.0,  0,  0.0,
-
-             0.0, 0,  0.0,
-             0.0, 0,  0.0,
-             0.0, 0,  0.0,
-             0.0, 0,  0.0,
-
-             1.0,  0.0,  0.0,
-             1.0,  0.0,  0.0,
-             1.0,  0.0,  0.0,
-             1.0,  0.0,  0.0,
-
-            -1.0,  0.0,  0.0,
-            -1.0,  0.0,  0.0,
-            -1.0,  0.0,  0.0,
-            -1.0,  0.0,  0.0
-        ];
-        this.GL.bufferData(this.GL.ARRAY_BUFFER, new Float32Array(vertexNormals), this.GL.STATIC_DRAW);
-        buffer.saturnRing.vertexNormalItemSize = 3;
-        buffer.saturnRing.vertexNormalNumItems = 24;
-        
-        buffer.saturnRing.vertexTextureCoord = this.GL.createBuffer();
-        this.GL.bindBuffer(this.GL.ARRAY_BUFFER, buffer.saturnRing.vertexTextureCoord);
-        var textureCoords = [
-            0.0, 0.0,
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0,
-
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0,
-            0.0, 0.0,
-
-            0.0, 1.0,
-            0.0, 0.0,
-            1.0, 0.0,
-            1.0, 1.0,
-
-            1.0, 1.0,
-            0.0, 1.0,
-            0.0, 0.0,
-            1.0, 0.0,
-
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0,
-            0.0, 0.0,
-
-            0.0, 0.0,
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0
-        ];
-        this.GL.bufferData(this.GL.ARRAY_BUFFER, new Float32Array(textureCoords), this.GL.STATIC_DRAW);
-        buffer.saturnRing.vertexTextureCoordItemSize = 2;
-        buffer.saturnRing.vertexTextureCoordNumItems = 24;
-        
-        buffer.saturnRing.vertexIndex = this.GL.createBuffer();
-        this.GL.bindBuffer(this.GL.ELEMENT_ARRAY_BUFFER, buffer.saturnRing.vertexIndex);
-        var cubeVertexIndices = [
-            0, 1, 2,      0, 2, 3,   
-            4, 5, 6,      4, 6, 7,  
-            8, 9, 10,     8, 10, 11, 
-            12, 13, 14,   12, 14, 15,
-            16, 17, 18,   16, 18, 19,
-            20, 21, 22,   20, 22, 23 
-        ];
-        this.GL.bufferData(this.GL.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeVertexIndices), this.GL.STATIC_DRAW);
-        buffer.saturnRing.vertexIndexItemSize = 1;
-        buffer.saturnRing.vertexIndexNumItems = 36;
+        }               
     },
     
     
@@ -615,6 +481,13 @@ var main = {
         };
         texture.earth.image.src = source.texture.earth;
         
+        texture.earthSpec = this.GL.createTexture();
+        texture.earthSpec.image = new Image();
+        texture.earthSpec.image.onload = function() {
+            util.handleLoadedTexture(texture.earthSpec);
+        };
+        texture.earthSpec.image.src = source.texture.earthSpec;
+        
         texture.moon = this.GL.createTexture();
         texture.moon.image = new Image();
         texture.moon.image.onload = function() {
@@ -642,13 +515,6 @@ var main = {
             util.handleLoadedTexture(texture.saturn);
         };
         texture.saturn.image.src = source.texture.saturn;
-        
-        texture.saturnRing = this.GL.createTexture();
-        texture.saturnRing.image = new Image();
-        texture.saturnRing.image.onload = function() {
-            util.handleLoadedTexture(texture.saturnRing);
-        };
-        texture.saturnRing.image.src = source.texture.saturnRing;
         
         texture.uranus = this.GL.createTexture();
         texture.uranus.image = new Image();
@@ -683,71 +549,69 @@ var main = {
         
         mat4.perspective(45, this.GL.viewportWidth / this.GL.viewportHeight, 0.1, 1000.0, matrix.p);
         
-        var specularHighlights = true;
-        this.GL.uniform1i(this.SHADER_PROGRAM.showSpecularHighlightsUniform, specularHighlights);        
-        this.GL.uniform3f(
-            this.SHADER_PROGRAM.ambientColorUniform,
-            worldObjects.lighting.ambient.r,
-             worldObjects.lighting.ambient.g,
-             worldObjects.lighting.ambient.b
-        );
-
-        this.GL.uniform3f(
-            this.SHADER_PROGRAM.pointLightingLocationUniform,
-            worldObjects.lighting.point.x,
-            worldObjects.lighting.point.y,
-            worldObjects.lighting.point.z
-        );
+        this.GL.uniform1i(this.SHADER_PROGRAM.useColorMapUniform, true);
         
-        this.GL.uniform3f(
-            this.SHADER_PROGRAM.pointLightingSpecularColorUniform,
-            worldObjects.lighting.specular.r,
-            worldObjects.lighting.specular.g,
-            worldObjects.lighting.specular.b
-        );
+        var lighting = true; //for debug        
+        this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, lighting);
+        if (lighting) {
+            this.GL.uniform3f(
+                this.SHADER_PROGRAM.ambientColorUniform,
+                worldObjects.lighting.ambient.r,
+                 worldObjects.lighting.ambient.g,
+                 worldObjects.lighting.ambient.b
+            );
 
-        this.GL.uniform3f(
-            this.SHADER_PROGRAM.pointLightingDiffuseColorUniform,
-            worldObjects.lighting.diffuse.r,
-            worldObjects.lighting.diffuse.g,
-            worldObjects.lighting.diffuse.b
-        );
+            this.GL.uniform3f(
+                this.SHADER_PROGRAM.pointLightingLocationUniform,
+                worldObjects.lighting.point.x,
+                worldObjects.lighting.point.y,
+                worldObjects.lighting.point.z
+            );
             
+            this.GL.uniform3f(
+                this.SHADER_PROGRAM.pointLightingSpecularColorUniform,
+                worldObjects.lighting.specular.r,
+                worldObjects.lighting.specular.g,
+                worldObjects.lighting.specular.b
+            );
+
+            this.GL.uniform3f(
+                this.SHADER_PROGRAM.pointLightingDiffuseColorUniform,
+                worldObjects.lighting.diffuse.r,
+                worldObjects.lighting.diffuse.g,
+                worldObjects.lighting.diffuse.b
+            );            
+        }        
         var textures = true; // for debug;
         this.GL.uniform1i(this.SHADER_PROGRAM.useTexturesUniform, textures);
         
         mat4.identity(matrix.mv);
 
+        mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //my camera location
+        mat4.rotate(matrix.mv, util.degToRad(40), [1, 0, 0]);
         for (var i = 0; i < this.spheres.length; i++) {
-            this.GL.disable(this.GL.BLEND);
-            this.GL.enable(this.GL.DEPTH_TEST);
             var target = this.spheres[i];
-            
-            util.mvPushMatrix();
-            
-            this.GL.uniform1f(this.SHADER_PROGRAM.materialShininessUniform, worldObjects[target].shine);
+            util.mvPushMatrix();            
             if (target === 'sun') {
                 this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, false);
+                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].rotationAngle),[0,1,0]);
             } else {
                 this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, true);
+                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].rotationAngle), [0, 1, 0]);
+                mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]);
             }
-            mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //goes to my 'origin'
-            mat4.rotate(matrix.mv, util.degToRad(20), [1, 0, 0]);
-            if (target !== 'moon') {
-                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].currentOrbit), [0, 1, 0]);
-                mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]); // draws planet x distance from sun
-                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].currentSpin), [0, 1, 0]);
-            } else {
-                mat4.rotate(matrix.mv, util.degToRad(worldObjects.earth.currentOrbit), [0, 1, 0]);
-                mat4.translate(matrix.mv, [worldObjects.earth.orbitDistance, 0, 0]);
-                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].currentOrbit), [0, 1, 0]);
-                mat4.translate(matrix.mv, [worldObjects[target].orbitDistance, 0, 0]);                
-                mat4.rotate(matrix.mv, util.degToRad(worldObjects[target].currentSpin), [0, 1, 0]);                
-            }
-                
+            
             this.GL.activeTexture(this.GL.TEXTURE0);
             this.GL.bindTexture(this.GL.TEXTURE_2D, texture[target]);
             this.GL.uniform1i(this.SHADER_PROGRAM.samplerUniform, 0);
+            if (texture[target+'Spec']) {
+                this.GL.uniform1i(this.SHADER_PROGRAM.useSpecularMapUniform, true);
+                this.GL.activeTexture(this.GL.TEXTURE1);
+                this.GL.bindTexture(this.GL.TEXTURE_2D, texture[target+'Spec']);
+                this.GL.uniform1i(this.SHADER_PROGRAM.specularMapSamplerUniform, 1);
+            } else {
+                this.GL.uniform1i(this.SHADER_PROGRAM.useSpecularMapUniform, false);
+            }
 
             this.GL.bindBuffer(this.GL.ARRAY_BUFFER, buffer[target].vertexPosition);
             this.GL.vertexAttribPointer(this.SHADER_PROGRAM.vertexPositionAttribute, buffer[target].vertexPositionItemSize, this.GL.FLOAT, false, 0, 0);
@@ -761,43 +625,8 @@ var main = {
             this.GL.bindBuffer(this.GL.ELEMENT_ARRAY_BUFFER, buffer[target].vertexIndex);
             util.setMatrixUniforms();
             this.GL.drawElements(this.GL.TRIANGLES, buffer[target].vertexIndexNumItems, this.GL.UNSIGNED_SHORT, 0);
-            
-            util.mvPopMatrix();            
+            util.mvPopMatrix();
         }
-        this.GL.uniform1i(this.SHADER_PROGRAM.useLightingUniform, true);
-        util.mvPushMatrix();
-        this.GL.blendFunc(this.GL.SRC_ALPHA, this.GL.ONE);
-        this.GL.enable(this.GL.BLEND);
-        this.GL.disable(this.GL.DEPTH_TEST);
-        this.GL.uniform1f(this.SHADER_PROGRAM.alphaUniform, 1);
-        // saturn ring
-        mat4.translate(matrix.mv, [worldObjects.camera.x, worldObjects.camera.y, worldObjects.camera.z]); //goes to my 'origin'
-        var scale = worldObjects.saturn.ringScale;
-        mat4.rotate(matrix.mv, util.degToRad(20), [1, 0, 0]);        
-        mat4.rotate(matrix.mv, util.degToRad(worldObjects.saturn.currentOrbit), [0, 1, 0]);
-        mat4.translate(matrix.mv, [worldObjects.saturn.orbitDistance, 0, 0]); 
-        mat4.rotate(matrix.mv, util.degToRad(worldObjects.saturn.currentSpin), [0, 1, 0]);
-        mat4.scale(matrix.mv,[scale,0,scale]);
-        mat4.rotate(matrix.mv, util.degToRad(20), [0, -1, 0]);
-        
-        this.GL.activeTexture(this.GL.TEXTURE0);
-        this.GL.bindTexture(this.GL.TEXTURE_2D, texture.saturnRing);
-        this.GL.uniform1i(this.SHADER_PROGRAM.samplerUniform, 0);
-
-        this.GL.bindBuffer(this.GL.ARRAY_BUFFER, buffer.saturnRing.vertexPosition);
-        this.GL.vertexAttribPointer(this.SHADER_PROGRAM.vertexPositionAttribute, buffer.saturnRing.vertexPositionItemSize, this.GL.FLOAT, false, 0, 0);
-
-        this.GL.bindBuffer(this.GL.ARRAY_BUFFER, buffer.saturnRing.vertexTextureCoord);
-        this.GL.vertexAttribPointer(this.SHADER_PROGRAM.textureCoordAttribute, buffer.saturnRing.vertexTextureCoordItemSize, this.GL.FLOAT, false, 0, 0);
-
-        this.GL.bindBuffer(this.GL.ARRAY_BUFFER, buffer.saturnRing.vertexNormal);
-        this.GL.vertexAttribPointer(this.SHADER_PROGRAM.vertexNormalAttribute, buffer.saturnRing.vertexNormalItemSize, this.GL.FLOAT, false, 0, 0);
-
-        this.GL.bindBuffer(this.GL.ELEMENT_ARRAY_BUFFER, buffer.saturnRing.vertexIndex);
-        util.setMatrixUniforms();
-        this.GL.drawElements(this.GL.TRIANGLES, buffer.saturnRing.vertexIndexNumItems, this.GL.UNSIGNED_SHORT, 0);
-        
-        util.mvPopMatrix();        
     },
     
     animate: function() {
@@ -806,8 +635,7 @@ var main = {
             var elapsed = timeNow - this.lastTime;
             for (var i =0; i < this.spheres.length; i++) {
                 var target = this.spheres[i];
-                worldObjects[target].currentSpin += worldObjects[target].spinAngle * elapsed;
-                worldObjects[target].currentOrbit += worldObjects[target].orbitAngle * elapsed;
+                worldObjects[target].rotationAngle += worldObjects[target].speed * elapsed;
             }
         }
         this.lastTime = timeNow;
@@ -818,7 +646,7 @@ var main = {
             main.tick();
         });
         main.draw();   
-        this.GL.flush();  
+        //this.GL.flush();  
         main.animate();
     },
     
@@ -848,7 +676,11 @@ var main = {
         
         /* Animation */
         this.lastTime = 0;
-        /* Prep */     
+        
+        /* Prep */
+        
+
+        
         this.tick();
     }
 };
